@@ -64,8 +64,9 @@ class KNearestNeighbor(object):
           is the Euclidean distance between the ith test point and the jth training
           point.
         """
-        num_test = X.shape[0]
-        num_train = self.X_train.shape[0]
+        #注意：之前的trian已经把训练集的图片信息保存好了，相当于被包含在了self参数里面！
+        num_test = X.shape[0]#这里取了要预测图片的数量
+        num_train = self.X_train.shape[0]#这里取了要预测的图片的数量
         dists = np.zeros((num_test, num_train))
         for i in range(num_test):
             for j in range(num_train):
@@ -75,7 +76,7 @@ class KNearestNeighbor(object):
                 # training point, and store the result in dists[i, j]. You should   #
                 # not use a loop over dimension, nor use np.linalg.norm().          #
                 #####################################################################
-                pass
+                dists[i,j]=np.sqrt(np.sum(np.square(X[i,:]-self.X_train[j,:])))
         return dists
 
     def compute_distances_one_loop(self, X):
@@ -95,7 +96,7 @@ class KNearestNeighbor(object):
             # points, and store the result in dists[i, :].                        #
             # Do not use np.linalg.norm().                                        #
             #######################################################################
-            pass
+            dists[i,:]=np.sqrt(np.sum(np.square(X[i,:]-self.X_train),axis=1))
         return dists
 
     def compute_distances_no_loops(self, X):
@@ -121,9 +122,15 @@ class KNearestNeighbor(object):
         # HINT: Try to formulate the l2 distance using matrix multiplication    #
         #       and two broadcast sums.                                         #
         #########################################################################
-
+        #注意：这里已经超出了上面的broadcasting的范畴，所以要想一些别的方法：选择展开，
+        #(x-y)**2=x**2+y**2+2xy,因此可以进行一个转化.
+        #同时注意：对于一个张量采取了sum之后得到的是一个一维数组，而不是一个张量。因此要做broadcast，
+        #必须要再做一次reshape
+        first_xiang=np.sum(X**2,axis=1).reshape(-1,1)
+        second_xiang=np.sum(self.X_train**2,axis=1).reshape(1,-1)
+        third_xiang=X@self.X_train.T
+        dists=np.sqrt(-2*third_xiang+first_xiang+second_xiang)
         return dists
-
     def predict_labels(self, dists, k=1):
         """
         Given a matrix of distances between test points and training points,
@@ -150,7 +157,9 @@ class KNearestNeighbor(object):
             # neighbors. Store these labels in closest_y.                           #
             # Hint: Look up the function numpy.argsort.                             #
             #########################################################################
-
+            minimal_distance_k=np.argsort(dists[i,:])[:k]
+            for j in minimal_distance_k:
+              closest_y.append(self.y_train[j])
 
             #########################################################################
             # TODO:                                                                 #
@@ -159,6 +168,13 @@ class KNearestNeighbor(object):
             # Store this label in y_pred[i]. Break ties by choosing the smaller     #
             # label.                                                                #
             #########################################################################
-
-
+            num_dict={}
+            for t in closest_y:
+              if t not in num_dict:
+                num_dict[t]=1
+              else:
+                num_dict[t]+=1
+            y_pred[i]=max(num_dict,key=num_dict.get)
+              
+            
         return y_pred
